@@ -179,6 +179,28 @@ def get_resnet(filters_sequence = [[64, 3, 5], [128, 4, 5], [256, 6, 5], [512, 3
 
     return resnet
 
+def get_resnet2(filters_sequence = [[64, 3, 5], [128, 4, 5], [256, 6, 5], [512, 3, 5]], input_shape=[400, 400, 1], first_kernel_size=7, se_blocks=False, activation='relu'):
+
+    resnet = tf.keras.Sequential([
+        DefaultConv2D(64, kernel_size=first_kernel_size, strides=2, input_shape=input_shape),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Activation("relu"),
+        tf.keras.layers.MaxPool2D(pool_size=2, strides=1, padding="same"),
+    ])
+
+    filters_list = [e for sublist in [[(f, kernel_size)]*n for f, n, kernel_size in filters_sequence] for e in sublist]
+    prev_filters = filters_list[0]
+
+    for filters, kernel_size in filters_list:
+        strides = 1 if filters == prev_filters else 2
+        if se_blocks:
+            resnet.add(SE_ResidualUnit(filters, strides=strides, activation=activation))
+        else:
+            resnet.add(ResidualUnit(filters, strides=strides, kernel_size=kernel_size))
+        prev_filters = filters
+
+    return resnet
+
 def get_SENet( num_blocks=4, filters=128, se_ratio=16, input_shape=[400, 400, 1], num_classes=2):
     model = Sequential()
 
