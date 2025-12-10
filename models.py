@@ -217,18 +217,19 @@ def get_SENet( num_blocks=4, filters=128, se_ratio=16, input_shape=[400, 400, 1]
 
     return model
 
-# Camnet
 
+# Camnet
+@keras.saving.register_keras_serializable()
 class CAMNetS(tf.keras.Model):
 
-    def __init__(self, dilation_rate=1):
+    def __init__(self):
         super(CAMNetS, self).__init__()
 
-        self.conv1 = Conv2D(128, 11, activation='relu', padding='same', dilation_rate=dilation_rate)
-        self.conv2 = Conv2D(256, 7, activation='relu', padding='same', dilation_rate=dilation_rate)
-        self.conv3 = Conv2D(384, 5, activation='relu', padding='same', dilation_rate=dilation_rate)
-        self.conv4 = Conv2D(384, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
-        self.conv5 = Conv2D(256, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
+        self.conv1 = Conv2D(32, 11, activation='relu', padding='same', dilation_rate=dilation_rate)
+        self.conv2 = Conv2D(64, 7, activation='relu', padding='same', dilation_rate=dilation_rate)
+        self.conv3 = Conv2D(128, 5, activation='relu', padding='same', dilation_rate=dilation_rate)
+        self.conv4 = Conv2D(128, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
+        self.conv5 = Conv2D(64, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
 
         self.mp = MaxPooling2D(2)
         
@@ -243,3 +244,28 @@ class CAMNetS(tf.keras.Model):
         x = self.conv5(x)
 
         return x
+
+def get_CAMNetS(dilation_rate=1, **kwargs):
+    return Sequential([
+                    Conv2D(32, 11, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    MaxPooling2D(2),
+                    Conv2D(64, 7, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    MaxPooling2D(2),
+                    Conv2D(128, 5, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    Conv2D(128, 3, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    Conv2D(64, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
+        
+    ])
+
+def get_CAMNetS2(dilation_rate=1, **kwargs):
+    return Sequential([
+                    Conv2D(32, 11, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    MaxPooling2D(2),
+                    Conv2D(64, 7, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    MaxPooling2D(2),
+                    Conv2D(128, 5, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    MaxPooling2D(2),
+                    Conv2D(128, 3, activation='relu', padding='same', dilation_rate=dilation_rate),
+                    Conv2D(64, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
+        
+    ])
