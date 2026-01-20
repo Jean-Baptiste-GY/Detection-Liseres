@@ -1,7 +1,7 @@
 import tensorflow as tf
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Dropout,Reshape, Flatten, Conv1D, Conv2D, MaxPooling2D, BatchNormalization, Resizing, GlobalAveragePooling2D, GlobalMaxPool2D, Conv2DTranspose, Concatenate
+from keras.layers import Dense, Activation, Dropout,Reshape, Flatten, Conv1D, Conv2D, MaxPooling2D, BatchNormalization, Resizing, GlobalAveragePooling2D, GlobalMaxPool2D, Maximum, Minimum, Multiply, Conv2DTranspose, Concatenate, DepthwiseConv1D
 import numpy as np
 
 from functools import partial
@@ -42,6 +42,110 @@ class adaptateur(tf.keras.Model):
 
         return x
     
+
+class adaptateur2h(tf.keras.Model):
+    def __init__(self, n=1, **kwargs):
+        super(adaptateur2h, self).__init__(**kwargs)
+
+        self.gap = GlobalAveragePooling2D()
+        self.max = GlobalMaxPool2D()
+        self.mult = Multiply()
+        self.dense = Dense(n, activation='sigmoid', bias_initializer=None, use_bias=False)
+        self.n = n
+
+    def get_weights(self):
+        return self.dense.weights[0].numpy().reshape(-1)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'n': self.n})
+        return config
+    
+    def call(self, x):
+
+        x1 = self.gap(x)
+        x2 = self.max(x)
+        x = self.mult([x1, x2])
+        x = self.dense(x)
+
+        return x
+
+
+class adaptateur2h_min(tf.keras.Model):
+    def __init__(self, n=1, **kwargs):
+        super(adaptateur2h_min, self).__init__(**kwargs)
+
+        self.gap = GlobalAveragePooling2D()
+        self.max = GlobalMaxPool2D()
+        self.min = Minimum()
+        self.dense = Dense(n, activation='sigmoid', bias_initializer=None, use_bias=False)
+        self.n = n
+
+    def get_weights(self):
+        return self.dense.weights[0].numpy().reshape(-1)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'n': self.n})
+        return config
+    
+    def call(self, x):
+
+        x1 = self.gap(x)
+        x2 = self.max(x)
+        x1_mult = self.dense(x1)
+        x2_mult = self.dense(x2)
+        x = self.min([x1_mult, x2_mult])
+
+        return x
+
+
+# Source: https://stackoverflow.com/questions/60644157/bias-only-layer-in-keras
+class BiasLayer(tf.keras.layers.Layer):
+    def __init__(self, *args, **kwargs):
+        super(BiasLayer, self).__init__(*args, **kwargs)
+
+    def get_config(self):
+        config = super().get_config()
+        return config
+    
+    def build(self, input_shape):
+        self.bias = self.add_weight(shape=input_shape[1:],
+                                    initializer='zeros',
+                                    trainable=True)
+    def call(self, x):
+        return x + self.bias
+
+class adaptateur2h_min_bias(tf.keras.Model):
+    def __init__(self, n=1, **kwargs):
+        super(adaptateur2h_min_bias, self).__init__(**kwargs)
+
+        self.gap = GlobalAveragePooling2D()
+        self.max = GlobalMaxPool2D()
+        self.min = Minimum()
+        self.bias = BiasLayer()
+        self.dense = Dense(n, activation='sigmoid', bias_initializer=None, use_bias=False)
+        self.n = n
+
+    def get_weights(self):
+        return self.dense.weights[0].numpy().reshape(-1)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'n': self.n})
+        return config
+    
+    def call(self, x):
+
+        x_gap = self.gap(x)
+        x_max = self.max(x)
+        
+        x_gap = self.dense(x_gap)
+        x_max = self.dense(x_max)
+        x = self.min([x_gap, self.bias(x_max)])
+
+        return x
+
 
 # Residual layers
 
@@ -269,3 +373,25 @@ def get_CAMNetS2(dilation_rate=1, **kwargs):
                     Conv2D(64, 3, activation='relu', padding='same', dilation_rate=dilation_rate)
         
     ])
+
+class Hide_and_Seek(tf.keras.layers.Layer):
+    def __init__(self, filters=(10, 10, 1), drop_rate=.5, **kwargs):
+        super().__init__(**kwargs)
+        self.filters = filters
+        self.drop_rate = drop_rate
+
+    def call(self, x):
+        grid = np.random.choice(a=[1, 0], p=[1-self.drop_rate, self.drop_rate], size=self.filters)
+        grid = tf.where(tf.image.resize(grid, x.shape[1:3], method='area')[:, :, 0] > .5, 1.0, 0.0)
+        grid = tf.expand_dims(grid, axis=-1)
+        prod = x*grid
+        return prod
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "filters": self.filters,
+            "drop_rate": self.drop_rate,
+        })
+        return config
+    
