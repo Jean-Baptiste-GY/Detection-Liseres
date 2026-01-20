@@ -4,6 +4,7 @@ import os
 import pathlib
 import json
 import tensorflow as tf
+from datetime import datetime
 
 
 def json_and_model(model_name, generator, parameters, structure_parameter = 'filters_sequence', notes = 'Aucunes notes', folder_name=None):
@@ -30,6 +31,19 @@ def json_and_model(model_name, generator, parameters, structure_parameter = 'fil
 
 
     return JSON, generator(**parameters)
+
+def json_from_model(model_name, notes = 'Aucune notes', folder_name=None):
+    folder_name = f'{datetime.now().strftime("%Y-%m-%d")}_{model_name}'
+    JSON = {
+        'notes': notes,
+        'name': model_name,
+        'generator': None,
+        'generator_parameters': None,
+        'structure': None,
+        'folder_name' : folder_name,
+        'training' : []
+    }
+    return JSON
 
 def get_dataset_dictionary(dataset):
     return {
